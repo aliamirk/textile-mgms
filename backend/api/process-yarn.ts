@@ -12,6 +12,7 @@ const api = axios.create({
 export interface YarnProcessInput {
   po_number: string;
   amount: number;
+  deliver: number;
 }
 
 // --- Yarn Tracking Response Type ---
@@ -25,7 +26,7 @@ export interface YarnTracking {
 export const processKnittingYarn = async (data: YarnProcessInput) => {
   try {
     const response = await api.put(
-      `/knitting/process_yarn/?po_number=${data.po_number}&amount=${data.amount}`
+      `/knitting/process_yarn/?po_number=${data.po_number}&amount=${data.amount}&deliver=${data.deliver}`
     );
     return response.data;
   } catch (error: any) {
@@ -38,7 +39,7 @@ export const processKnittingYarn = async (data: YarnProcessInput) => {
 export const processDyeingYarn = async (data: YarnProcessInput) => {
   try {
     const response = await api.put(
-      `/dying/process_yarn/?po_number=${data.po_number}&amount=${data.amount}`
+      `/dying/process_yarn/?po_number=${data.po_number}&amount=${data.amount}&deliver=${data.deliver}`
     );
     return response.data;
   } catch (error: any) {
@@ -51,7 +52,7 @@ export const processDyeingYarn = async (data: YarnProcessInput) => {
 export const processTrimmingYarn = async (data: YarnProcessInput) => {
   try {
     const response = await api.put(
-      `/trim/process_yarn/?po_number=${data.po_number}&amount=${data.amount}`
+      `/trim/process_yarn/?po_number=${data.po_number}&amount=${data.amount}&deliver=${data.deliver}`
     );
     return response.data;
   } catch (error: any) {

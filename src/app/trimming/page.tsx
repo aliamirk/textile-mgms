@@ -1,78 +1,78 @@
 
-
+        
 "use client";
 import { motion } from "framer-motion";
 import useAuthCheck from "../../../lib/useAuthCheck";
 import { useState } from "react";
-import { processTrimmingYarn } from "../../../backend/api/process-yarn";
-import { downloadPurchaseOrder } from "../../../backend/api/purchase-orders"; 
+import { processDyeingYarn } from "../../../backend/api/process-yarn";
+import { downloadPurchaseOrder } from "../../../backend/api/purchase-orders";
 import Papa from "papaparse";
 import { jsPDF } from "jspdf";
-import toast, { Toaster } from "react-hot-toast";
-
+import toast from "react-hot-toast";
 
 export default function DyeingPage() {
-  useAuthCheck(["trims"]);
+  useAuthCheck(["dyeing"]);
 
   // Separate states
   const [processPoNumber, setProcessPoNumber] = useState("");
   const [downloadPoNumber, setDownloadPoNumber] = useState("");
   const [amount, setAmount] = useState("");
+  const [deliver, setDeliver] = useState(""); // 🆕 added deliver field
   const [loading, setLoading] = useState(false);
   const [downloadLoading, setDownloadLoading] = useState(false);
-  const [message1, setMessage1] = useState<string | null>(null);
   const [message2, setMessage2] = useState<string | null>(null);
 
   // --- Process Yarn Handler ---
-    const handleProcessYarn = async (e: React.FormEvent) => {
-      e.preventDefault();
-      if (!processPoNumber || !amount)
-        return toast.error("Please enter PO number and amount.", {
-          style: { background: "#EF4444", color: "#fff", borderRadius: "10px" },
-        });
-  
-      setLoading(true);
-  
-      try {
-        const deliver = Number(amount);
-  
-        const response = await processTrimmingYarn({
-          po_number: processPoNumber,
-          amount: Number(amount),
-        });
-  
-        toast.success(
-          `${response.message}\nPO: ${response.po_number}\nAvailable Yarn: ${response.new_available_yarn}\nProcessed Yarn: ${response.new_processed_yarn}`,
-          {
-            duration: 4000,
-            style: {
-              background: "#10B981",
-              color: "#fff",
-              borderRadius: "10px",
-              fontWeight: "500",
-              whiteSpace: "pre-line",
-            },
-          }
-        );
-  
-        console.log(response);
-      } catch (err: any) {
-        console.error(err);
-        const errorMsg =
-          err.response?.data?.detail || "❌ Error processing yarn. Please try again.";
-        toast.error(errorMsg, {
-          style: { background: "#EF4444", color: "#fff", borderRadius: "10px" },
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-  
+  const handleProcessYarn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!processPoNumber || !amount || !deliver) {
+      return toast.error("Please enter PO number, amount, and delivery.", {
+        style: { background: "#EF4444", color: "#fff", borderRadius: "10px" },
+      });
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await processDyeingYarn({
+        po_number: processPoNumber,
+        amount: Number(amount),
+        deliver: Number(deliver), // 🆕 added deliver to API call
+      });
+
+      toast.success(
+        `${response.message}\nPO: ${response.po_number}\nAvailable Yarn: ${response.new_available_yarn}\nProcessed Yarn: ${response.new_processed_yarn}`,
+        {
+          duration: 4000,
+          style: {
+            background: "#10B981",
+            color: "#fff",
+            borderRadius: "10px",
+            fontWeight: "500",
+            whiteSpace: "pre-line",
+          },
+        }
+      );
+
+      console.log(response);
+    } catch (err: any) {
+      console.error(err);
+      const errorMsg =
+        err.response?.data?.detail ||
+        "❌ Error processing yarn. Please try again.";
+      toast.error(errorMsg, {
+        style: { background: "#EF4444", color: "#fff", borderRadius: "10px" },
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // --- Download PO Handler ---
   const handleDownloadPO = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!downloadPoNumber) return setMessage2("Please enter PO number to download.");
+    if (!downloadPoNumber)
+      return setMessage2("Please enter PO number to download.");
 
     setDownloadLoading(true);
     setMessage2(null);
@@ -116,9 +116,13 @@ export default function DyeingPage() {
           doc.setFontSize(12);
           doc.setFont("helvetica", "bold");
           doc.setTextColor(255);
-          doc.setFillColor(50, 50, 150); // dark blue header
+          doc.setFillColor(50, 50, 150);
           doc.rect(margin + idx * colWidth, currentY, colWidth, rowHeight, "F");
-          doc.text(header.toUpperCase(), margin + idx * colWidth + colPadding, currentY + 17);
+          doc.text(
+            header.toUpperCase(),
+            margin + idx * colWidth + colPadding,
+            currentY + 17
+          );
         });
         currentY += rowHeight;
       };
@@ -136,7 +140,6 @@ export default function DyeingPage() {
 
       // Draw rows
       rows.forEach((row, rowIndex) => {
-        // Page break
         if (currentY + rowHeight > pageHeight - margin) {
           addFooter(pageNum);
           doc.addPage();
@@ -145,9 +148,8 @@ export default function DyeingPage() {
           addHeader();
         }
 
-        // Alternating row color
         if (rowIndex % 2 === 0) {
-          doc.setFillColor(230, 230, 250); 
+          doc.setFillColor(230, 230, 250);
           headers.forEach((_, idx) => {
             doc.rect(margin + idx * colWidth, currentY, colWidth, rowHeight, "F");
           });
@@ -158,8 +160,12 @@ export default function DyeingPage() {
           doc.setFontSize(11);
           doc.setTextColor(0);
           const text = (row[header] ?? "").toString();
-          doc.text(text, margin + idx * colWidth + colPadding, currentY + 17);
-          doc.rect(margin + idx * colWidth, currentY, colWidth, rowHeight); 
+          doc.text(
+            text,
+            margin + idx * colWidth + colPadding,
+            currentY + 17
+          );
+          doc.rect(margin + idx * colWidth, currentY, colWidth, rowHeight);
         });
 
         currentY += rowHeight;
@@ -186,7 +192,9 @@ export default function DyeingPage() {
     >
       {/* Header */}
       <div className="text-center mb-12">
-        <h1 className="text-4xl font-extrabold text-indigo-700 mb-3">Trimming Department</h1>
+        <h1 className="text-4xl font-extrabold text-indigo-700 mb-3">
+          Trimming Department
+        </h1>
         <p className="text-gray-600 text-lg max-w-2xl mx-auto">
         Handle yarn trimming and finishing tasks.  
         Ensure smooth transitions between dyeing and final packaging stages.
@@ -195,13 +203,17 @@ export default function DyeingPage() {
 
       {/* Process Yarn Card */}
       <motion.div className="w-full max-w-6xl bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/50 p-10 mb-12 hover:shadow-indigo-200 transition-shadow duration-300">
-        <h2 className="text-2xl font-bold text-indigo-700 mb-8 text-center">Process Trimming Yarn</h2>
+        <h2 className="text-2xl font-bold text-indigo-700 mb-8 text-center">
+          Process Trimming Yarn
+        </h2>
         <form
           onSubmit={handleProcessYarn}
           className="flex flex-col md:flex-row md:items-end md:space-x-6 space-y-4 md:space-y-0"
         >
           <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-1">PO Number</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              PO Number
+            </label>
             <input
               type="text"
               value={processPoNumber}
@@ -210,8 +222,11 @@ export default function DyeingPage() {
               className="w-full rounded-xl border border-gray-300 p-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
             />
           </div>
+
           <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Yarn Amount</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Yarn Amount
+            </label>
             <input
               type="number"
               value={amount}
@@ -220,6 +235,21 @@ export default function DyeingPage() {
               className="w-full rounded-xl border border-gray-300 p-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
             />
           </div>
+
+          {/* 🆕 Deliver Field */}
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Delivery Amount
+            </label>
+            <input
+              type="number"
+              value={deliver}
+              onChange={(e) => setDeliver(e.target.value)}
+              placeholder="Enter delivery amount"
+              className="w-full rounded-xl border border-gray-300 p-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
+            />
+          </div>
+
           <motion.button
             whileTap={{ scale: 0.97 }}
             disabled={loading}
@@ -233,10 +263,17 @@ export default function DyeingPage() {
 
       {/* Download PO Card */}
       <motion.div className="w-full max-w-6xl bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/50 p-10 hover:shadow-sky-200 transition-shadow duration-300">
-        <h2 className="text-2xl font-bold text-sky-600 mb-8 text-center">Download Purchase Order</h2>
-        <form onSubmit={handleDownloadPO} className="flex flex-col md:flex-row md:items-end md:space-x-6 space-y-4 md:space-y-0">
+        <h2 className="text-2xl font-bold text-sky-600 mb-8 text-center">
+          Download Purchase Order
+        </h2>
+        <form
+          onSubmit={handleDownloadPO}
+          className="flex flex-col md:flex-row md:items-end md:space-x-6 space-y-4 md:space-y-0"
+        >
           <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-1">PO Number</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              PO Number
+            </label>
             <input
               type="text"
               value={downloadPoNumber}
@@ -245,16 +282,34 @@ export default function DyeingPage() {
               className="w-full rounded-xl border border-gray-300 p-3 focus:outline-none focus:ring-2 focus:ring-sky-500 shadow-sm"
             />
           </div>
-          <motion.button whileTap={{ scale: 0.97 }} disabled={downloadLoading} type="submit"
-            className="w-full md:w-auto px-8 py-3 bg-sky-500 text-white font-semibold rounded-xl hover:bg-sky-600 shadow-md transition">
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            disabled={downloadLoading}
+            type="submit"
+            className="w-full md:w-auto px-8 py-3 bg-sky-500 text-white font-semibold rounded-xl hover:bg-sky-600 shadow-md transition"
+          >
             {downloadLoading ? "Downloading..." : "Download PO"}
           </motion.button>
         </form>
-        {message2 && <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={`mt-6 text-center font-medium ${message2.includes("📄") ? "text-green-600" : "text-red-600"}`}>{message2}</motion.p>}
+        {message2 && (
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className={`mt-6 text-center font-medium ${
+              message2.includes("📄")
+                ? "text-green-600"
+                : "text-red-600"
+            }`}
+          >
+            {message2}
+          </motion.p>
+        )}
       </motion.div>
 
       {/* Footer */}
-      <p className="mt-14 text-gray-500 text-sm text-center">© {new Date().getFullYear()} Yarn Management System</p>
+      <p className="mt-14 text-gray-500 text-sm text-center">
+        © {new Date().getFullYear()} Yarn Management System
+      </p>
     </motion.div>
   );
 }

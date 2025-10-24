@@ -1,39 +1,43 @@
+
+
 "use client";
 import { motion } from "framer-motion";
 import useAuthCheck from "../../../lib/useAuthCheck";
 import { useState } from "react";
-import { processKnittingYarn } from "../../../backend/api/process-yarn";
+import { processDyeingYarn } from "../../../backend/api/process-yarn";
 import { downloadPurchaseOrder } from "../../../backend/api/purchase-orders";
 import Papa from "papaparse";
 import { jsPDF } from "jspdf";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 
-export default function KnittingPage() {
-  useAuthCheck(["knitting"]);
+export default function DyeingPage() {
+  useAuthCheck(["dyeing"]);
 
   // Separate states
   const [processPoNumber, setProcessPoNumber] = useState("");
   const [downloadPoNumber, setDownloadPoNumber] = useState("");
   const [amount, setAmount] = useState("");
+  const [deliver, setDeliver] = useState(""); // 🆕 added deliver field
   const [loading, setLoading] = useState(false);
   const [downloadLoading, setDownloadLoading] = useState(false);
+  const [message2, setMessage2] = useState<string | null>(null);
 
   // --- Process Yarn Handler ---
   const handleProcessYarn = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!processPoNumber || !amount)
-      return toast.error("Please enter PO number and amount.", {
+    if (!processPoNumber || !amount || !deliver) {
+      return toast.error("Please enter PO number, amount, and delivery.", {
         style: { background: "#EF4444", color: "#fff", borderRadius: "10px" },
       });
+    }
 
     setLoading(true);
 
     try {
-      const deliver = Number(amount);
-
-      const response = await processKnittingYarn({
+      const response = await processDyeingYarn({
         po_number: processPoNumber,
         amount: Number(amount),
+        deliver: Number(deliver), // 🆕 added deliver to API call
       });
 
       toast.success(
@@ -54,7 +58,8 @@ export default function KnittingPage() {
     } catch (err: any) {
       console.error(err);
       const errorMsg =
-        err.response?.data?.detail || "❌ Error processing yarn. Please try again.";
+        err.response?.data?.detail ||
+        "❌ Error processing yarn. Please try again.";
       toast.error(errorMsg, {
         style: { background: "#EF4444", color: "#fff", borderRadius: "10px" },
       });
@@ -67,15 +72,15 @@ export default function KnittingPage() {
   const handleDownloadPO = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!downloadPoNumber)
-      return toast.error("Please enter PO number to download.", {
-        style: { background: "#EF4444", color: "#fff", borderRadius: "10px" },
-      });
+      return setMessage2("Please enter PO number to download.");
 
     setDownloadLoading(true);
+    setMessage2(null);
 
     try {
       const response = await downloadPurchaseOrder(downloadPoNumber);
 
+      // Handle Blob or string response
       let csvData = "";
       if (response instanceof Blob) {
         csvData = await response.text();
@@ -87,11 +92,9 @@ export default function KnittingPage() {
 
       const parsed = Papa.parse(csvData, { header: true, skipEmptyLines: true });
       const rows = parsed.data as Record<string, string>[];
-      if (!rows.length)
-        return toast.error("❌ No data found in PO.", {
-          style: { background: "#EF4444", color: "#fff", borderRadius: "10px" },
-        });
+      if (!rows.length) return setMessage2("❌ No data found in PO.");
 
+      // --- PDF Generation ---
       const doc = new jsPDF({ unit: "pt", format: "a4" });
       const margin = 40;
       const pageWidth = doc.internal.pageSize.getWidth();
@@ -102,6 +105,7 @@ export default function KnittingPage() {
       const colWidth = (pageWidth - 2 * margin) / headers.length;
       let currentY = margin;
 
+      // Header function
       const addHeader = () => {
         doc.setFontSize(18);
         doc.setFont("helvetica", "bold");
@@ -114,11 +118,16 @@ export default function KnittingPage() {
           doc.setTextColor(255);
           doc.setFillColor(50, 50, 150);
           doc.rect(margin + idx * colWidth, currentY, colWidth, rowHeight, "F");
-          doc.text(header.toUpperCase(), margin + idx * colWidth + colPadding, currentY + 17);
+          doc.text(
+            header.toUpperCase(),
+            margin + idx * colWidth + colPadding,
+            currentY + 17
+          );
         });
         currentY += rowHeight;
       };
 
+      // Footer function
       const addFooter = (pageNum: number) => {
         doc.setFontSize(10);
         doc.setFont("helvetica", "normal");
@@ -129,6 +138,7 @@ export default function KnittingPage() {
       let pageNum = 1;
       addHeader();
 
+      // Draw rows
       rows.forEach((row, rowIndex) => {
         if (currentY + rowHeight > pageHeight - margin) {
           addFooter(pageNum);
@@ -150,7 +160,11 @@ export default function KnittingPage() {
           doc.setFontSize(11);
           doc.setTextColor(0);
           const text = (row[header] ?? "").toString();
-          doc.text(text, margin + idx * colWidth + colPadding, currentY + 17);
+          doc.text(
+            text,
+            margin + idx * colWidth + colPadding,
+            currentY + 17
+          );
           doc.rect(margin + idx * colWidth, currentY, colWidth, rowHeight);
         });
 
@@ -158,22 +172,12 @@ export default function KnittingPage() {
       });
 
       addFooter(pageNum);
-      doc.save(`${downloadPoNumber}_PurchaseOrder.pdf`);
 
-      toast.success(`📄 Purchase Order #${downloadPoNumber} downloaded successfully!`, {
-        duration: 4000,
-        style: {
-          background: "#2563EB",
-          color: "#fff",
-          borderRadius: "10px",
-          fontWeight: "500",
-        },
-      });
+      doc.save(`${downloadPoNumber}_PurchaseOrder.pdf`);
+      setMessage2(`📄 Purchase Order #${downloadPoNumber} downloaded successfully!`);
     } catch (err) {
       console.error(err);
-      toast.error("❌ Error generating PDF from PO CSV.", {
-        style: { background: "#EF4444", color: "#fff", borderRadius: "10px" },
-      });
+      setMessage2("❌ Error generating PDF from PO CSV.");
     } finally {
       setDownloadLoading(false);
     }
@@ -186,26 +190,30 @@ export default function KnittingPage() {
       transition={{ duration: 0.6, ease: "easeOut" }}
       className="min-h-screen flex flex-col items-center bg-gradient-to-br from-white via-sky-50 to-indigo-100 py-16 px-6"
     >
-      <Toaster position="top-center" reverseOrder={false} />
-
       {/* Header */}
       <div className="text-center mb-12">
-        <h1 className="text-4xl font-extrabold text-indigo-700 mb-3">Knitting Department</h1>
+        <h1 className="text-4xl font-extrabold text-indigo-700 mb-3">
+          Knitting Department
+        </h1>
         <p className="text-gray-600 text-lg max-w-2xl mx-auto">
-          Track yarn usage, fabric production, and ongoing knitting processes.
-          Integrate with your knitting API to fetch and update production data.
+        Track yarn usage, fabric production, and ongoing knitting processes.
+        Integrate with your knitting API to fetch and update production data.
         </p>
       </div>
 
       {/* Process Yarn Card */}
       <motion.div className="w-full max-w-6xl bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/50 p-10 mb-12 hover:shadow-indigo-200 transition-shadow duration-300">
-        <h2 className="text-2xl font-bold text-indigo-700 mb-8 text-center">Process Knitting Yarn</h2>
+        <h2 className="text-2xl font-bold text-indigo-700 mb-8 text-center">
+          Process Knitting Yarn
+        </h2>
         <form
           onSubmit={handleProcessYarn}
           className="flex flex-col md:flex-row md:items-end md:space-x-6 space-y-4 md:space-y-0"
         >
           <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-1">PO Number</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              PO Number
+            </label>
             <input
               type="text"
               value={processPoNumber}
@@ -214,8 +222,11 @@ export default function KnittingPage() {
               className="w-full rounded-xl border border-gray-300 p-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
             />
           </div>
+
           <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Yarn Amount</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Yarn Amount
+            </label>
             <input
               type="number"
               value={amount}
@@ -224,6 +235,21 @@ export default function KnittingPage() {
               className="w-full rounded-xl border border-gray-300 p-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
             />
           </div>
+
+          {/* 🆕 Deliver Field */}
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Delivery Amount
+            </label>
+            <input
+              type="number"
+              value={deliver}
+              onChange={(e) => setDeliver(e.target.value)}
+              placeholder="Enter delivery amount"
+              className="w-full rounded-xl border border-gray-300 p-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
+            />
+          </div>
+
           <motion.button
             whileTap={{ scale: 0.97 }}
             disabled={loading}
@@ -237,13 +263,17 @@ export default function KnittingPage() {
 
       {/* Download PO Card */}
       <motion.div className="w-full max-w-6xl bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/50 p-10 hover:shadow-sky-200 transition-shadow duration-300">
-        <h2 className="text-2xl font-bold text-sky-600 mb-8 text-center">Download Purchase Order</h2>
+        <h2 className="text-2xl font-bold text-sky-600 mb-8 text-center">
+          Download Purchase Order
+        </h2>
         <form
           onSubmit={handleDownloadPO}
           className="flex flex-col md:flex-row md:items-end md:space-x-6 space-y-4 md:space-y-0"
         >
           <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-1">PO Number</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              PO Number
+            </label>
             <input
               type="text"
               value={downloadPoNumber}
@@ -261,6 +291,19 @@ export default function KnittingPage() {
             {downloadLoading ? "Downloading..." : "Download PO"}
           </motion.button>
         </form>
+        {message2 && (
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className={`mt-6 text-center font-medium ${
+              message2.includes("📄")
+                ? "text-green-600"
+                : "text-red-600"
+            }`}
+          >
+            {message2}
+          </motion.p>
+        )}
       </motion.div>
 
       {/* Footer */}
