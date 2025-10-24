@@ -4,7 +4,7 @@ import useAuthCheck from "../../../lib/useAuthCheck";
 import PageCard from "../../../components/PageCard";
 
 export default function AdminPage() {
-    useAuthCheck();
+    useAuthCheck(["admin"]);
     const pages = [
         { title: "Vendor", description: "Manage vendor details and contacts.", href: "/vendor" },
         { title: "Yarn", description: "Track yarn inventory and details.", href: "/yarn" },

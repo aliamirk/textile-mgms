@@ -2,12 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import {
-  requestYarn,
-  viewYarn,
-  receiveYarn,
-  viewAllYarn,
-} from "../../../backend/api/yarn";
+import { requestYarn, viewYarn, receiveYarn, viewAllYarn } from "../../../backend/api/yarn";
 
 export default function YarnPage() {
   const [selectedAction, setSelectedAction] = useState<string | null>(null);
@@ -16,16 +11,13 @@ export default function YarnPage() {
   const [result, setResult] = useState<any>(null);
   const [allYarn, setAllYarn] = useState<any[]>([]);
 
-  // --- Form States ---
+  // --- Form states ---
   const [yarnRequest, setYarnRequest] = useState({
     count: 0,
     content: "",
     spun_type: "",
     bags: 0,
     kgs: 0,
-    vendor_id: "",
-    order_no: "",
-    status: "pending",
   });
 
   const [yarnReceived, setYarnReceived] = useState({
@@ -38,55 +30,32 @@ export default function YarnPage() {
 
   const [status, setStatus] = useState("");
 
-  // --- Handle Submit ---
+  // --- Handle submit ---
   const handleAction = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
     setResult(null);
+    setAllYarn([]);
 
     try {
       let response;
 
       if (selectedAction === "request") {
-        const payload = {
-          ...yarnRequest,
-          count: Number(yarnRequest.count),
-          bags: Number(yarnRequest.bags),
-          kgs: Number(yarnRequest.kgs),
-        };
-        response = await requestYarn(payload);
+        response = await requestYarn(yarnRequest);
+        setResult(response);
       } else if (selectedAction === "view") {
         response = await viewYarn(status || undefined);
+        setResult(response);
       } else if (selectedAction === "receive") {
-        const payload = {
-          ...yarnReceived,
-          kgs_received: Number(yarnReceived.kgs_received),
-          bags_recevied: Number(yarnReceived.bags_recevied),
-        };
-        response = await receiveYarn(payload);
+        response = await receiveYarn(yarnReceived);
+        setResult(response);
+      } else if (selectedAction === "viewAll") {
+        response = await viewAllYarn();
+        setAllYarn(response);
       }
-
-      setResult(response);
     } catch (err: any) {
       setError(err?.response?.data?.detail || err.message || "Something went wrong.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // --- View All Yarn ---
-  const handleViewAllYarn = async () => {
-    setLoading(true);
-    setError(null);
-    setAllYarn([]);
-    setSelectedAction(null);
-
-    try {
-      const response = await viewAllYarn();
-      setAllYarn(response);
-    } catch (err: any) {
-      setError(err?.response?.data?.detail || err.message || "Failed to fetch yarn records.");
     } finally {
       setLoading(false);
     }
@@ -110,6 +79,7 @@ export default function YarnPage() {
           { id: "request", label: "Request Yarn" },
           { id: "view", label: "View Yarn" },
           { id: "receive", label: "Receive Yarn" },
+          { id: "viewAll", label: "View All Yarn" },
         ].map((btn) => (
           <motion.button
             key={btn.id}
@@ -133,14 +103,17 @@ export default function YarnPage() {
       </div>
 
       {/* Dynamic Form */}
-      {selectedAction && (
+      {selectedAction !== "viewAll" && (
         <motion.div
           key={selectedAction}
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           className="w-full max-w-xl bg-white rounded-2xl shadow-xl p-8 border border-gray-100"
         >
-          {/* --- REQUEST YARN --- */}
+          {!selectedAction && (
+            <p className="text-gray-500 text-center">Choose an action to continue.</p>
+          )}
+
           {selectedAction === "request" && (
             <form onSubmit={handleAction} className="space-y-4">
               {Object.keys(yarnRequest).map((key) => (
@@ -149,13 +122,16 @@ export default function YarnPage() {
                     {key.replace("_", " ")}
                   </label>
                   <input
-                    required={key !== "status"}
-                    type={["count", "bags", "kgs"].includes(key) ? "number" : "text"}
+                    required
+                    type={typeof (yarnRequest as any)[key] === "number" ? "number" : "text"}
                     value={(yarnRequest as any)[key]}
                     onChange={(e) =>
                       setYarnRequest({
                         ...yarnRequest,
-                        [key]: e.target.value,
+                        [key]:
+                          typeof (yarnRequest as any)[key] === "number"
+                            ? Number(e.target.value)
+                            : e.target.value,
                       })
                     }
                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-400 outline-none"
@@ -172,7 +148,6 @@ export default function YarnPage() {
             </form>
           )}
 
-          {/* --- VIEW YARN --- */}
           {selectedAction === "view" && (
             <form onSubmit={handleAction} className="space-y-4">
               <div>
@@ -195,7 +170,6 @@ export default function YarnPage() {
             </form>
           )}
 
-          {/* --- RECEIVE YARN --- */}
           {selectedAction === "receive" && (
             <form onSubmit={handleAction} className="space-y-4">
               {Object.keys(yarnReceived).map((key) => (
@@ -208,7 +182,7 @@ export default function YarnPage() {
                     type={
                       key === "received_date"
                         ? "datetime-local"
-                        : ["kgs_received", "bags_recevied"].includes(key)
+                        : typeof (yarnReceived as any)[key] === "number"
                         ? "number"
                         : "text"
                     }
@@ -216,7 +190,10 @@ export default function YarnPage() {
                     onChange={(e) =>
                       setYarnReceived({
                         ...yarnReceived,
-                        [key]: e.target.value,
+                        [key]:
+                          typeof (yarnReceived as any)[key] === "number"
+                            ? Number(e.target.value)
+                            : e.target.value,
                       })
                     }
                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-400 outline-none"
@@ -235,52 +212,45 @@ export default function YarnPage() {
         </motion.div>
       )}
 
-      {/* Separator */}
-      <hr className="w-full max-w-5xl border-t-2 border-indigo-200 my-10" />
+      {/* View All Yarn Records */}
+      {selectedAction === "viewAll" && (
+        <div className="w-full max-w-5xl space-y-6">
+          <button
+            onClick={handleAction}
+            disabled={loading}
+            className="w-full bg-gradient-to-r from-indigo-500 to-sky-500 text-white font-semibold py-3 rounded-lg hover:opacity-90 transition mb-6"
+          >
+            {loading ? "Loading..." : "Fetch All Yarn Records"}
+          </button>
 
-      {/* 🧵 View All Yarn Button */}
-      <motion.button
-        whileHover={{ scale: 1.03 }}
-        whileTap={{ scale: 0.98 }}
-        onClick={handleViewAllYarn}
-        disabled={loading}
-        className="w-full max-w-xl py-4 bg-gradient-to-r from-indigo-600 to-sky-500 text-white font-semibold text-lg rounded-xl shadow-lg hover:opacity-90 transition-all"
-      >
-        {loading ? "Loading Yarn Records..." : "View All Yarn Records"}
-      </motion.button>
-
-      {/* 🪶 Yarn Record Cards (Fixed Schema Mapping) */}
-      {allYarn.length > 0 && (
-        <div className="mt-10 w-full max-w-6xl space-y-6">
-          {allYarn.map((item, index) => (
-            <motion.div
-              key={item._id || index}
-              whileHover={{ y: -4 }}
-              className="w-full bg-white border border-gray-200 rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden"
-            >
-              <div className="bg-gradient-to-r from-indigo-100 to-sky-100 px-6 py-3 border-b border-gray-100 flex justify-between items-center">
-                <h3 className="text-lg font-semibold text-indigo-700">
-                  🧵 Yarn Record #{index + 1}
+          {allYarn.length > 0 ? (
+            allYarn.map((yarn, index) => (
+              <motion.div
+                key={yarn._id || index}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+                className="bg-white/80 backdrop-blur-lg shadow-md border border-gray-200 rounded-2xl p-6 hover:shadow-indigo-200 transition-all"
+              >
+                <h3 className="text-xl font-semibold text-indigo-700 mb-3">
+                  🧵 Yarn ID: {yarn._id}
                 </h3>
-                {item.status && (
-                  <span className="text-sm font-medium text-gray-600 bg-indigo-50 px-3 py-1 rounded-full">
-                    {item.status}
-                  </span>
-                )}
-              </div>
-              <div className="p-6 text-gray-700 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-y-3">
-                <p><strong>Vendor ID:</strong> {item.vendor_id}</p>
-                <p><strong>Spun Type:</strong> {item.spun_type}</p>
-                <p><strong>Kgs Received:</strong> {item.kgs_received}</p>
-                <p><strong>Bags Received:</strong> {item.bags_recevied}</p>
-                {item.request_id && <p><strong>Request ID:</strong> {item.request_id}</p>}
-                {item.order_no && <p><strong>Order No:</strong> {item.order_no}</p>}
-                {item.received_date && (
-                  <p><strong>Received Date:</strong> {new Date(item.received_date).toLocaleString()}</p>
-                )}
-              </div>
-            </motion.div>
-          ))}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-gray-700">
+                  <p><span className="font-semibold">Spun Type:</span> {yarn.spun_type}</p>
+                  <p><span className="font-semibold">Vendor ID:</span> {yarn.vendor_id}</p>
+                  <p><span className="font-semibold">Kgs Received:</span> {yarn.kgs_received}</p>
+                  <p><span className="font-semibold">Bags Received:</span> {yarn.bags_recevied}</p>
+                  <p><span className="font-semibold">Request ID:</span> {yarn.request_id}</p>
+                  <p><span className="font-semibold">Order No:</span> {yarn.order_no || "N/A"}</p>
+                  <p><span className="font-semibold">Received Date:</span> {new Date(yarn.received_date).toLocaleString()}</p>
+                </div>
+              </motion.div>
+            ))
+          ) : (
+            !loading && (
+              <p className="text-gray-500 text-center">No records to display.</p>
+            )
+          )}
         </div>
       )}
 
@@ -296,7 +266,7 @@ export default function YarnPage() {
           </motion.div>
         )}
 
-        {result && (
+        {result && !Array.isArray(result) && (
           <motion.pre
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

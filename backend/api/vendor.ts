@@ -52,3 +52,14 @@ export const deleteVendor = async (vendorId: string) => {
     throw error;
   }
 };
+
+export const viewAllVendors = async () => {
+  try {
+    const response = await api.get("/view_all_vendors");
+    console.log("✅ View All Vendors Response:", response.data);
+    return response.data; // array of vendor objects
+  } catch (error: any) {
+    console.error("❌ Error viewing all vendors:", error.message);
+    throw error;
+  }
+};

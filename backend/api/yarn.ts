@@ -63,3 +63,13 @@ export const receiveYarn = async (data: YarnReceived) => {
   }
 };
 
+export const viewAllYarn = async () => {
+  try {
+    const response = await api.get("/view_all_yarn");
+    console.log("View All Yarn Response:", response.data);
+    return response.data; // array of yarn objects
+  } catch (error: any) {
+    console.error("❌ Error viewing all yarn:", error.message);
+    throw error;
+  }
+};

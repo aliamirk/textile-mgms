@@ -178,29 +178,6 @@ export default function PurchaseOrdersPage() {
     }
   };
 
-  // const handleDownloadPO = async (e: React.FormEvent) => {
-  //   e.preventDefault();
-  //   if (!poNumber) return setMessage2("Please enter PO number to download.");
-
-  //   setDownloadLoading(true);
-  //   setMessage2(null);
-  //   try {
-  //     const blob = await downloadPurchaseOrder(poNumber);
-  //     const url = window.URL.createObjectURL(new Blob([blob]));
-  //     const link = document.createElement("a");
-  //     link.href = url;
-  //     link.setAttribute("download", `${poNumber}_PurchaseOrder.pdf`);
-  //     document.body.appendChild(link);
-  //     link.click();
-  //     link.remove();
-  //     setMessage2(`📄 Purchase Order #${poNumber} downloaded successfully!`);
-  //   } catch (err) {
-  //     console.error(err);
-  //     setMessage2("❌ Error downloading PO file.");
-  //   } finally {
-  //     setDownloadLoading(false);
-  //   }
-  // };
   
   const handleDownloadPO = async (e: React.FormEvent) => {
     e.preventDefault();

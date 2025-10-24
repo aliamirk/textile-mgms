@@ -3,14 +3,15 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { registerVendor, viewVendor, deleteVendor } from "../../../backend/api/vendor";
+import { viewAllVendors } from "../../../backend/api/vendor"; // import your new function
 
 export default function VendorPage() {
   const [selectedAction, setSelectedAction] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<any>(null);
+  const [allVendors, setAllVendors] = useState<any[]>([]);
 
-  // Form state for register
   const [vendorData, setVendorData] = useState({
     company_name: "",
     broker_name: "",
@@ -20,7 +21,6 @@ export default function VendorPage() {
     prefix: "",
   });
 
-  // Form state for view/delete
   const [vendorId, setVendorId] = useState("");
 
   const handleAction = async (e: React.FormEvent) => {
@@ -28,19 +28,24 @@ export default function VendorPage() {
     setLoading(true);
     setError(null);
     setResult(null);
+    setAllVendors([]);
 
     try {
       let response;
 
       if (selectedAction === "register") {
         response = await registerVendor(vendorData);
+        setResult(response);
       } else if (selectedAction === "view") {
         response = await viewVendor(vendorId);
+        setResult(response);
       } else if (selectedAction === "delete") {
         response = await deleteVendor(vendorId);
+        setResult(response);
+      } else if (selectedAction === "view_all") {
+        response = await viewAllVendors();
+        setAllVendors(response);
       }
-
-      setResult(response);
     } catch (err: any) {
       setError(err?.response?.data?.detail || err.message || "Something went wrong.");
     } finally {
@@ -53,11 +58,11 @@ export default function VendorPage() {
       initial={{ opacity: 0, y: 40 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6 }}
-      className="min-h-screen flex flex-col items-center py-10 px-4 bg-gradient-to-br from-white via-sky-50 to-indigo-100"
+      className="min-h-screen flex flex-col items-center py-10 px-6 bg-gradient-to-br from-white via-sky-50 to-indigo-100"
     >
       <h1 className="text-4xl font-bold text-indigo-700 mb-6">Vendor Management</h1>
       <p className="text-gray-600 mb-10 text-center max-w-2xl">
-        Select an action below to manage vendor data.
+        Manage your vendors below — register, view, delete, or view all vendors in a clean format.
       </p>
 
       {/* Action Buttons */}
@@ -66,6 +71,7 @@ export default function VendorPage() {
           { id: "register", label: "Register Vendor" },
           { id: "view", label: "View Vendor" },
           { id: "delete", label: "Delete Vendor" },
+          { id: "view_all", label: "View All Vendors" },
         ].map((btn) => (
           <motion.button
             key={btn.id}
@@ -75,6 +81,7 @@ export default function VendorPage() {
               setSelectedAction(btn.id);
               setResult(null);
               setError(null);
+              setAllVendors([]);
             }}
             className={`px-6 py-3 rounded-xl font-semibold shadow-md transition-all duration-300 ${
               selectedAction === btn.id
@@ -87,7 +94,7 @@ export default function VendorPage() {
         ))}
       </div>
 
-      {/* Dynamic Form */}
+      {/* Forms */}
       <motion.div
         key={selectedAction}
         initial={{ opacity: 0, y: 30 }}
@@ -153,30 +160,74 @@ export default function VendorPage() {
             </button>
           </form>
         )}
+
+        {selectedAction === "view_all" && (
+          <div className="text-center">
+            <button
+              onClick={handleAction}
+              disabled={loading}
+              className="w-full bg-gradient-to-r from-indigo-500 to-sky-500 text-white font-semibold py-3 rounded-lg hover:opacity-90 transition"
+            >
+              {loading ? "Loading Vendors..." : "View All Vendors"}
+            </button>
+          </div>
+        )}
       </motion.div>
 
-      {/* Feedback */}
-      <div className="mt-8 w-full max-w-xl text-center">
-        {error && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="bg-red-100 border border-red-300 text-red-700 px-4 py-3 rounded-lg"
-          >
-            ⚠️ {error}
-          </motion.div>
-        )}
+      {/* Error */}
+      {error && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="mt-8 w-full max-w-2xl bg-red-100 border border-red-300 text-red-700 px-4 py-3 rounded-lg text-center"
+        >
+          ⚠️ {error}
+        </motion.div>
+      )}
 
-        {result && (
-          <motion.pre
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="bg-green-50 border border-green-300 text-green-700 px-4 py-3 rounded-lg text-left overflow-x-auto mt-4 whitespace-pre-wrap"
-          >
-            ✅ {JSON.stringify(result, null, 2)}
-          </motion.pre>
-        )}
-      </div>
+      {/* Single Result */}
+      {result && !Array.isArray(result) && (
+        <motion.pre
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="mt-8 w-full max-w-2xl bg-green-50 border border-green-300 text-green-700 px-4 py-3 rounded-lg text-left overflow-x-auto whitespace-pre-wrap"
+        >
+          ✅ {JSON.stringify(result, null, 2)}
+        </motion.pre>
+      )}
+
+      {/* All Vendors List */}
+      {allVendors.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="mt-10 w-full max-w-5xl space-y-6"
+        >
+          {allVendors.map((vendor, index) => (
+            <motion.div
+              key={vendor._id || index}
+              whileHover={{ scale: 1.01 }}
+              className="bg-white border border-gray-200 rounded-2xl shadow-md p-6 md:p-8 transition-all duration-300 hover:shadow-xl"
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl md:text-2xl font-semibold text-indigo-700">
+                  {vendor.company_name}
+                </h2>
+                <span className="text-sm text-gray-500">
+                  ID: {vendor.vendor_id}
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-gray-700">
+                <p><span className="font-semibold">Broker:</span> {vendor.broker_name}</p>
+                <p><span className="font-semibold">Contact:</span> {vendor.contact}</p>
+                <p><span className="font-semibold">Contract Type:</span> {vendor.contract_type}</p>
+                <p><span className="font-semibold">GST Number:</span> {vendor.gst_number}</p>
+                <p><span className="font-semibold">Prefix:</span> {vendor.prefix}</p>
+              </div>
+            </motion.div>
+          ))}
+        </motion.div>
+      )}
     </motion.div>
   );
 }

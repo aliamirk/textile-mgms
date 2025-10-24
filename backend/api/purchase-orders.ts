@@ -61,9 +61,20 @@ export const duplicateDownloadPO = async (poNumber: string): Promise<Blob> => {
   }
 };
 
+export const viewAllPO = async () => {
+  try {
+    const response = await api.get("/view_all_po");
+    console.log("✅ View All PO Response:", response.data);
+    return response.data; // array of PO objects
+  } catch (error: any) {
+    console.error("❌ Error viewing all POs:", error.message);
+    throw error;
+  }
+};
 
 export default {
   viewPurchaseOrder,
   downloadPurchaseOrder,
   duplicateDownloadPO,
+  viewAllPO
 };
