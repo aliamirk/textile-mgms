@@ -4,7 +4,7 @@
 import { motion } from "framer-motion";
 import useAuthCheck from "../../../lib/useAuthCheck";
 import { useState } from "react";
-import { processDyeingYarn } from "../../../backend/api/process-yarn";
+import { processTrimmingYarn } from "../../../backend/api/process-yarn";
 import { downloadPurchaseOrder } from "../../../backend/api/purchase-orders";
 import Papa from "papaparse";
 import { jsPDF } from "jspdf";
@@ -34,7 +34,7 @@ export default function DyeingPage() {
     setLoading(true);
 
     try {
-      const response = await processDyeingYarn({
+      const response = await processTrimmingYarn({
         po_number: processPoNumber,
         amount: Number(amount),
         deliver: Number(deliver), // 🆕 added deliver to API call
