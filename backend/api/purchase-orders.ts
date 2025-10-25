@@ -38,7 +38,7 @@ export const viewPurchaseOrder = async (poNumber: string): Promise<PurchaseOrder
 // Download PO
 export const downloadPurchaseOrder = async (poNumber: string): Promise<Blob> => {
   try {
-    const response = await api.get(`/download_po/${poNumber}`, {
+    const response = await api.get(`/download/${poNumber}`, {
       responseType: "blob",
     });
     return response.data;

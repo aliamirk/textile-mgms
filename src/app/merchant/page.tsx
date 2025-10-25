@@ -23,106 +23,37 @@ export default function MerchantPage() {
   // --- Download PO Handler ---
   const handleDownloadPO = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!downloadPoNumber) return setMessage2("Please enter PO number to download.");
+    if (!downloadPoNumber)
+      return setMessage2("Please enter PO number to download.");
 
     setDownloadLoading(true);
     setMessage2(null);
 
     try {
+      // The API returns a PDF blob
       const response = await downloadPurchaseOrder(downloadPoNumber);
 
-      // Handle Blob or string response
-      let csvData = "";
-      if (response instanceof Blob) {
-        csvData = await response.text();
-      } else if (typeof response === "string") {
-        csvData = response;
-      } else {
-        throw new Error("Invalid response from API");
+      // Ensure it’s a blob (PDF)
+      if (!(response instanceof Blob)) {
+        throw new Error("Invalid response: expected a PDF file.");
       }
 
-      const parsed = Papa.parse(csvData, { header: true, skipEmptyLines: true });
-      const rows = parsed.data as Record<string, string>[];
-      if (!rows.length) return setMessage2("❌ No data found in PO.");
+      // Create a temporary download link
+      const url = window.URL.createObjectURL(response);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${downloadPoNumber}_PurchaseOrder.pdf`;
+      document.body.appendChild(link);
+      link.click();
 
-      // --- PDF Generation ---
-      const doc = new jsPDF({ unit: "pt", format: "a4" });
-      const margin = 40;
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
-      const rowHeight = 25;
-      const colPadding = 5;
-      const headers = Object.keys(rows[0]);
-      const colWidth = (pageWidth - 2 * margin) / headers.length;
-      let currentY = margin;
+      // Cleanup
+      link.remove();
+      window.URL.revokeObjectURL(url);
 
-      // Header function
-      const addHeader = () => {
-        doc.setFontSize(18);
-        doc.setFont("helvetica", "bold");
-        doc.text(`Purchase Order #${downloadPoNumber}`, margin, currentY);
-        currentY += 30;
-
-        headers.forEach((header, idx) => {
-          doc.setFontSize(12);
-          doc.setFont("helvetica", "bold");
-          doc.setTextColor(255);
-          doc.setFillColor(50, 50, 150); // dark blue header
-          doc.rect(margin + idx * colWidth, currentY, colWidth, rowHeight, "F");
-          doc.text(header.toUpperCase(), margin + idx * colWidth + colPadding, currentY + 17);
-        });
-        currentY += rowHeight;
-      };
-
-      // Footer function
-      const addFooter = (pageNum: number) => {
-        doc.setFontSize(10);
-        doc.setFont("helvetica", "normal");
-        doc.setTextColor(100);
-        doc.text(`Page ${pageNum}`, pageWidth - margin - 50, pageHeight - 20);
-      };
-
-      let pageNum = 1;
-      addHeader();
-
-      // Draw rows
-      rows.forEach((row, rowIndex) => {
-        // Page break
-        if (currentY + rowHeight > pageHeight - margin) {
-          addFooter(pageNum);
-          doc.addPage();
-          pageNum += 1;
-          currentY = margin;
-          addHeader();
-        }
-
-        // Alternating row color
-        if (rowIndex % 2 === 0) {
-          doc.setFillColor(230, 230, 250); 
-          headers.forEach((_, idx) => {
-            doc.rect(margin + idx * colWidth, currentY, colWidth, rowHeight, "F");
-          });
-        }
-
-        headers.forEach((header, idx) => {
-          doc.setFont("helvetica", "normal");
-          doc.setFontSize(11);
-          doc.setTextColor(0);
-          const text = (row[header] ?? "").toString();
-          doc.text(text, margin + idx * colWidth + colPadding, currentY + 17);
-          doc.rect(margin + idx * colWidth, currentY, colWidth, rowHeight); 
-        });
-
-        currentY += rowHeight;
-      });
-
-      addFooter(pageNum);
-
-      doc.save(`${downloadPoNumber}_PurchaseOrder.pdf`);
       setMessage2(`📄 Purchase Order #${downloadPoNumber} downloaded successfully!`);
     } catch (err) {
       console.error(err);
-      setMessage2("❌ Error generating PDF from PO CSV.");
+      setMessage2("❌ Error downloading Purchase Order PDF.");
     } finally {
       setDownloadLoading(false);
     }
