@@ -25,6 +25,7 @@ export interface YarnReceived {
   bags_recevied: number;
   received_date: string; // use ISO format: "2025-10-20T10:00:00Z"
   vendor_id: string;
+  order_no: string
 }
 
 // --- API Functions -------------------------------------------------

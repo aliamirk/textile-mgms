@@ -17,7 +17,7 @@ export default function KnittingPage() {
   const [processPoNumber, setProcessPoNumber] = useState("");
   const [downloadPoNumber, setDownloadPoNumber] = useState("");
   const [amount, setAmount] = useState("");
-  const [deliver, setDeliver] = useState(""); // 🆕 added deliver field
+  const [deliver, setDeliver] = useState(""); 
   const [loading, setLoading] = useState(false);
   const [downloadLoading, setDownloadLoading] = useState(false);
   const [message2, setMessage2] = useState<string | null>(null);
@@ -37,7 +37,7 @@ export default function KnittingPage() {
       const response = await processKnittingYarn({
         po_number: processPoNumber,
         amount: Number(amount),
-        deliver: Number(deliver), // 🆕 added deliver to API call
+        deliver: Number(deliver), 
       });
 
       toast.success(

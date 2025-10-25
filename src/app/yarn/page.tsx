@@ -34,6 +34,7 @@ export default function YarnPage() {
     bags_recevied: 0,
     received_date: "",
     vendor_id: "",
+    order_no: ""
   });
 
   const [status, setStatus] = useState("");

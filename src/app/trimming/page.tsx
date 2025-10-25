@@ -11,13 +11,13 @@ import { jsPDF } from "jspdf";
 import toast from "react-hot-toast";
 
 export default function TrimmingPage() {
-  useAuthCheck(["trimming"]);
+  useAuthCheck(["trims"]);
 
   // Separate states
   const [processPoNumber, setProcessPoNumber] = useState("");
   const [downloadPoNumber, setDownloadPoNumber] = useState("");
   const [amount, setAmount] = useState("");
-  const [deliver, setDeliver] = useState(""); // 🆕 added deliver field
+  const [deliver, setDeliver] = useState(""); 
   const [loading, setLoading] = useState(false);
   const [downloadLoading, setDownloadLoading] = useState(false);
   const [message2, setMessage2] = useState<string | null>(null);
@@ -37,7 +37,7 @@ export default function TrimmingPage() {
       const response = await processTrimmingYarn({
         po_number: processPoNumber,
         amount: Number(amount),
-        deliver: Number(deliver), // 🆕 added deliver to API call
+        deliver: Number(deliver), 
       });
 
       toast.success(
