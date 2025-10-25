@@ -10,8 +10,8 @@ import Papa from "papaparse";
 import { jsPDF } from "jspdf";
 import toast from "react-hot-toast";
 
-export default function DyeingPage() {
-  useAuthCheck(["dyeing"]);
+export default function KnittingPage() {
+  useAuthCheck(["knitting"]);
 
   // Separate states
   const [processPoNumber, setProcessPoNumber] = useState("");

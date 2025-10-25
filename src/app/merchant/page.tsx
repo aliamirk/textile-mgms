@@ -7,7 +7,7 @@ import Papa from "papaparse";
 import { jsPDF } from "jspdf";
 
 
-export default function DyeingPage() {
+export default function MerchantPage() {
   useAuthCheck(["merchant"]);
 
   // Separate states
